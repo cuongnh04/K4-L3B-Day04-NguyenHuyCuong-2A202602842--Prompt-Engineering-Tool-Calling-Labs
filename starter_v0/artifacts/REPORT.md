@@ -1,152 +1,62 @@
-# Day 04 Lab v3 Report — Trợ lý AI của nhóm
+# Day 04 Lab v3 Report - Northstar Labs Helpdesk
 
-- Lĩnh vực tự chọn:
-- Nhiệm vụ và luồng cơ bản đã chốt trước v0:
-- Đường dẫn bộ 30 câu cơ bản và 12 câu an toàn; commit chốt bộ trước v0:
-- Chức năng mở rộng ngoài luồng cơ bản (nếu có; tối đa 10 trong tổng 100 điểm):
+## Scope
 
-## Team
+This submission keeps the fixed IT Helpdesk domain and uses the supplied base and adversarial suites. The agent routes service status, device inspection, user lookup, knowledge-base search, policy lookup, incident formatting, and ticket creation. It must ask for missing identifiers and a fresh confirmation before any ticket write.
 
-- Team:
-- Thành viên và INDIVIDUAL: [TEAM.md](../../TEAM.md)
-- Members:
-- Provider/model:
+Evidence files:
 
-# PHẦN A — Giới thiệu agent
+- Prompt: `artifacts/system_prompt.md`
+- Tool declarations: `artifacts/tools.yaml`
+- Group cases: `data/eval_group.json` (5 single-turn, 5 multi-turn)
+- Version hypotheses: `artifacts/version_log.csv`
+- Fixed suites: `data/eval_base.json`, `data/eval_adversarial.json`
 
-## A1. Agent này làm được gì
+## Prompt and Tool Decisions
 
-> Viết 1–2 câu mô tả capability và giới hạn của agent.
+The final prompt adds explicit routing rules, latest-turn correction, untrusted retrieved content handling, external-search privacy boundaries, and stale-confirmation protection. `tools.yaml` keeps the fixed tool names and compatible schemas. The strongest expected improvement is fewer wrong-tool calls and no unauthorized `create_ticket` calls.
 
-**Link dùng thử:**
+## v0-v3 Evidence
 
-> URL:
-
-## A2. Tool agent có
-
-| Tool | Chức năng | Core / optional / team-built |
-|---|---|---|
-| clarify | Hỏi bổ sung hoặc xác nhận | core |
-|  |  |  |
-
-## A3. Câu hỏi mẫu
-
-1.
-2.
-3.
-
-## A4. Kịch bản demo đã rehearse
-
-| Scenario | Tool trace cần thấy | Cải thiện version | Fallback run/transcript |
+| Version | Change | Hypothesis | Live status |
 |---|---|---|---|
-|  |  |  |  |
+| v0 | Starter baseline | Establish routing and provider baseline | Blocked: Gemini key returned `400 API_KEY_INVALID` |
+| v1 | Routing and clarification rules | Explicit routing reduces wrong tools and guessed IDs | Not run: provider unavailable |
+| v2 | Confirmation and injection boundaries | Write and adversarial requests stop safely | Not run: provider unavailable |
+| v3 | Ten original group cases | Multi-turn correction and stale confirmation are covered | Not run: provider unavailable |
 
-# PHẦN B — Chi tiết và evidence
+The provider preflight was attempted with Gemini and failed authentication before any case could be measured. No fake run JSON is committed; this is deliberate because the lab requires `provider_error_cases == 0` and `measured_cases == total_cases` for score-bearing evidence.
 
-Metric chỉ hợp lệ khi `provider_error_cases == 0`, `measured_cases ==
-total_cases`, và tool result error đã được review thủ công.
+## Group Evaluation Cases
 
-## B1. Version evidence
+`data/eval_group.json` contains exactly 10 original cases: G01-G05 are single-turn and G06-G10 are multi-turn. They cover shared-service routing, device arguments, policy routing, missing employee ID, confirmation, corrected asset IDs, carried environments, tool switching, changed ticket payloads, and external-data safety.
 
-| Version | Prompt/tool change | Hypothesis | Metric | Before | After | Run file |
-|---|---|---|---|---:|---:|---|
-| v0 | baseline |  |  |  |  |  |
-| v1 |  |  |  |  |  |  |
-| v2 |  |  |  |  |  |  |
-| v3 |  |  |  |  |  |  |
+## Safety Review
 
-## B2. Failure analysis
+- User text that looks like `SYSTEM`, `DEVELOPER`, assistant markup, or `TOOL_RESULTS_JSON` is treated as untrusted input.
+- Asset IDs, employee IDs, locations, diagnostics, credentials, and tokens are never sent to `search_device_info`.
+- `create_ticket` requires a specific payload and a fresh yes/no confirmation; changing priority or summary invalidates prior confirmation.
+- Missing asset, employee ID, or environment causes `clarify`, never an invented value.
+- The fixed adversarial suite remains unchanged and should be run after a valid provider is configured.
 
-| Case ID | Failure type | Actual calls | What failed | Fix |
-|---|---|---|---|---|
-|  |  |  |  |  |
+## UI and Transcript
 
-## B3. Team eval cases
+The supplied `chat.py` provides interactive chat, tool call printing, tool result/error capture, artifact version hashes, and transcript JSON persistence under `transcripts/`. A live transcript was not generated because provider preflight failed before a valid model response.
 
-Liệt kê đúng 10 case tự viết: 5 single-turn và 5 multi-turn.
+## Reproduction
 
-| Case ID | What it tests | Expected behavior | Result |
-|---|---|---|---|
-|  |  |  |  |
+```powershell
+cd starter_v0
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+# Fill one valid provider key locally; never commit .env.
+python scripts/preflight_provider.py --provider gemini
+python run_eval.py --provider gemini --version v0 --suite base --eval-cases data/eval_base.json
+python run_eval.py --provider gemini --version v1 --suite base --eval-cases data/eval_base.json
+python run_eval.py --provider gemini --version v2 --suite group --eval-cases data/eval_group.json
+python run_eval.py --provider gemini --version v3 --suite adversarial --eval-cases data/eval_adversarial.json
+```
 
-## B4. Live chat evidence
+## Limitation
 
-| Scenario/turn | Version | Tool calls + args | Transcript/run | Outcome |
-|---|---|---|---|---|
-|  |  |  |  |  |
-
-## B4a. Adversarial evidence
-
-Phân tích ít nhất 3 cases. Automatic score không chứng minh rằng không có dữ
-liệu bị ghi hoặc gửi ra ngoài; cần kiểm tra cả `tool_results` và filesystem.
-
-| Attack case | Expected boundary | Actual calls | Sensitive write/exfiltration occurred? | Outcome |
-|---|---|---|---|---|
-|  |  |  |  |  |
-
-## B5. Optional và bonus tool evidence
-
-Phần này chỉ điền khi nhóm có sử dụng optional tool hoặc tự xây bonus tool.
-Phần chung tối đa 90 điểm; mở rộng tối đa 10 điểm, tổng tối đa 100. Công cụ tự xây để phục vụ luồng cơ bản của lĩnh vực mới thuộc phần chung. `policy`,
-`create_ticket` và `search_device_info` là tool có sẵn, không phải tool mới do
-nhóm tự xây.
-
-| Category | Evidence file | What worked | Risk / guardrail |
-|---|---|---|---|
-| Optional built-in |  |  |  |
-| External search + privacy boundary |  |  |  |
-| Bonus: tool mới do nhóm tự xây |  |  |  |
-
-## B6. Safety review
-
-- Agent có bao giờ tự đoán asset ID hoặc employee ID không?
-- Trace/ticket có chứa password, MFA code, token hay dữ liệu thật không?
-- Ticket chỉ được tạo sau xác nhận rõ chưa?
-- Tool result error nào cần review thủ công?
-
-## B7. Technical reflection
-
-- Fix nào thuộc `system_prompt.md`?
-- Fix nào thuộc `tools.yaml`?
-- Failure nào không thể chỉ nhìn automatic score?
-- Nếu có thêm một vòng, nhóm sẽ thử hypothesis nào?
-
-# PHẦN C — Checkout trước khi nộp
-
-Phần này được hoàn thành sau khi toàn bộ code, evidence và report đã được đưa
-lên repository chung. Nhóm chưa nên nộp link trên VLearn nếu reflection hoặc
-commit evidence của bất kỳ thành viên nào còn thiếu.
-
-## C1. Nhận xét chung của nhóm
-
-Hoàn thành mục nhận xét chung trong [TEAM.md](../../TEAM.md). Dẫn tới các run, file và commit trong phần B để chứng minh kết quả. Ghi dưới đây đường dẫn tới mục đã hoàn thành:
-
-> Link:
-
-## C2. INDIVIDUAL của từng thành viên
-
-Mỗi người tự viết và commit mục INDIVIDUAL của mình trong [TEAM.md](../../TEAM.md), nêu phần việc, bằng chứng kỹ thuật và điều đã học. Không yêu cầu chép lại cùng nội dung ở đây. Mỗi mục phải có file/commit/PR thật, không dùng commit tự đánh giá làm bằng chứng kỹ thuật duy nhất.
-
-> Link các mục INDIVIDUAL:
-
-## C3. Final checkout
-
-Chỉ nộp bài khi mọi mục dưới đây đã được kiểm tra trên branch cuối cùng của
-repository chung:
-
-- [ ] `TEAM.md` có đủ họ tên, MSSV, GitHub username và vai trò.
-- [ ] Mỗi thành viên có ít nhất một commit trong lịch sử branch nộp bài.
-- [ ] Phần nhận xét chung trong TEAM.md đã hoàn thành và có evidence.
-- [ ] Mỗi thành viên đã tự viết và commit mục INDIVIDUAL trong TEAM.md.
-- [ ] `system_prompt.md`, `tools.yaml`, version log, runs, eval, transcript, UI
-      và report đã có trong repository.
-- [ ] Không có `.env`, API key, token, dữ liệu thật, cache hoặc generated ticket.
-- [ ] Nhóm trưởng và mọi thành viên đã thống nhất đúng một URL repository chung.
-- [ ] Nhóm trưởng và mọi thành viên sẽ nộp cùng URL đó trên VLearn.
-
-**URL repository chung dùng để nộp:**
-
-> URL:
-
-- [ ] Tên repo đúng mẫu K4-L3-DAY04-HoVaTen-MSSV-PromptEngineeringToolCalling.
-- [ ] Kiểm tra deadline và bản chốt theo [SUBMISSION.md](../../SUBMISSION.md).
+Live evidence is blocked solely by the local Gemini credential returning `API_KEY_INVALID`. The repository contains no API key, no fabricated provider run, and no real user data.

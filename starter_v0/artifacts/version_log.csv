@@ -1,1 +1,5 @@
 version,author,changed_artifact,artifact_version,prompt_hash,tools_hash,reason,hypothesis,metric_name,metric_before,metric_after,run_file
+v0,NguyenHuyCuong,baseline artifacts,not-run,not-run,not-run,Provider preflight blocked by invalid Gemini key,Live baseline must be collected before attributing failures to prompt changes,provider_error_cases,blocked,blocked,not-created
+v1,NguyenHuyCuong,system_prompt.md,local-only,local,local,Added explicit routing and missing-information rules,Explicit routing should reduce wrong-tool and wrong-argument failures,provider_error_cases,blocked,blocked,not-created
+v2,NguyenHuyCuong,system_prompt.md,local-only,local,local,Added confirmation and prompt-injection boundaries,Write and adversarial cases should never execute unsafe tools,provider_error_cases,blocked,blocked,not-created
+v3,NguyenHuyCuong,eval_group.json,local-only,local,local,Added five single-turn and five multi-turn original cases,Team cases should cover correction carry-over and stale confirmation,provider_error_cases,blocked,blocked,not-created
